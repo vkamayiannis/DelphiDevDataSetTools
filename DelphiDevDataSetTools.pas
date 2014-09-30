@@ -2,7 +2,7 @@ unit DelphiDevDataSetTools;
 
 interface
 
-uses Classes, DB;
+uses Classes, DB, IdGlobal;
 
 {procedure CopyDataSet:
  Copies data from dataset ASourceDataSet to dataset ADestDataSet.
@@ -27,6 +27,8 @@ function FieldHasValue(ADataSet: TDataSet; AFieldName: String;
 {procedure CopyValueToDataSet
  Copies AFieldValue to all the rows of ADataSet at field AFieldName}
 procedure CopyValueToDataSet(ADataSet: TDataSet; AFieldName: String; AFieldValue: Variant);
+
+function CheckFldIfEmpty(ADataSet: TDataSet; AFieldName: String): Boolean;
 
 implementation
 
@@ -83,11 +85,11 @@ begin
   ExcludedFieldsStrList := TStringList.Create;
   ExcludedFieldsStrList.CommaText := AExcludedFields;
   try
-    for i := 0 to FieldCount - 1 do begin
-      if ExcludedFieldsStrList.IndexOf(Fields[i].FieldName) > 0 then begin
-        Fld := ADestDataSet.FindField(Fields[i].FieldName);
+    for i := 0 to ASourceDataSet.FieldCount - 1 do begin
+      if ExcludedFieldsStrList.IndexOf(ASourceDataSet.Fields[i].FieldName) > 0 then begin
+        Fld := ADestDataSet.FindField(ASourceDataSet.Fields[i].FieldName);
         if Assigned(Fld) then
-          Fld.AsVariant := Fields[i].AsVariant;
+          Fld.AsVariant := ASourceDataSet.Fields[i].AsVariant;
       end;
     end;
   finally
@@ -140,6 +142,32 @@ begin
       Edit;
       Fld.AsVariant := AFieldValue; 
       Next;
+    end;
+  end;
+end;
+
+function CheckFldIfEmpty(ADataSet: TDataSet; AFieldName: String): Boolean;
+var
+  Fld: TField;
+begin
+  Result := False;
+  if not Assigned(ADataSet) or not ADataSet.Active then Exit;
+  Fld := ADataSet.FindField(AFieldName);
+  if not Assigned(Fld) then Exit;
+  with ADataSet do begin
+    try
+      Result := True;
+      DisableControls;
+      First;
+      while not eof do begin
+        if not Fld.IsNull then begin
+          Result := False;
+          exit;
+        end;
+        Next;
+      end;
+    finally
+      EnableControls;
     end;
   end;
 end;
